@@ -1,5 +1,7 @@
+import jwt
+from flask import current_app
 from flaskblog import db, login_manager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
 
 @login_manager.user_loader
@@ -16,6 +18,22 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}', '{self.image_file}')"
+    
+    def get_reset_token(self, expires_sec=1800):
+        # Create a payload with an expiration time
+        payload = {
+            'user_id': self.id,
+            'exp': datetime.now(tz=timezone.utc) + timedelta(seconds=expires_sec)
+        }
+        return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
+
+    @staticmethod
+    def verify_reset_token(token):
+        try:
+            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            return db.session.get(User, payload['user_id'])
+        except Exception:
+            return None
 
 
 class Post(db.Model):
