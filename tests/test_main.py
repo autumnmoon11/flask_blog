@@ -30,3 +30,22 @@ def test_home_page_with_posts(client, app):
     # 3. Assert: Check if the title we created is in the HTML
     assert response.status_code == 200
     assert b"Testing Post Title" in response.data
+
+def test_home_page_with_category(client, app):
+    # Create a post with a specific category to ensure it renders correctly
+    with app.app_context():
+        from flaskblog.models import User, Post
+        user = User(username='CatTester', email='cat@test.com', password='password')
+        db.session.add(user)
+        db.session.commit()
+        
+        # Explicitly setting the category to 'Finance'
+        post = Post(title='Finance News', content='Content', author=user, category='Finance')
+        db.session.add(post)
+        db.session.commit()
+
+    # Check if home page shows that 'Finance' label
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b"Finance News" in response.data
+    assert b"Finance" in response.data
