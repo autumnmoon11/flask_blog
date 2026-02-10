@@ -6,3 +6,5 @@ instance/
 *.pyc
 site.db
 .flaskenv
+.pytest_cache/
+*.db
