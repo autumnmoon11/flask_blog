@@ -1,3 +1,6 @@
+import io
+from PIL import Image
+from flask import url_for
 from flaskblog.models import User
 from flaskblog import db, bcrypt
 
@@ -60,3 +63,37 @@ def test_logout(client, app):
     assert response.status_code == 200
     assert b"Login" in response.data
     assert b"Logout" not in response.data
+
+def test_update_account_with_picture(app, client, auth, test_user, cleanup_test_images):
+    # Authenticate via test_user fixture using plain text password
+    auth.login(email=test_user.email, password='password')
+    
+    # Pre-generate target URL to avoid context build errors in client.post
+    with app.app_context():
+        target_url = url_for('users.account')
+    
+    # Generate mock image in memory to simulate user file upload
+    file_name = "test_profile.jpg"
+    data = io.BytesIO()
+    img = Image.new('RGB', (100, 100), color='red')
+    img.save(data, format='JPEG')
+    data.seek(0) # Reset stream to start for reading
+
+    # Post update request containing new username and profile picture
+    response = client.post(target_url, data={
+        'username': 'UpdatedUser',
+        'email': 'updated@email.com',
+        'picture': (data, file_name),
+        'submit': True
+    }, follow_redirects=True)
+
+
+    assert response.status_code == 200
+    assert b'Your account has been updated!' in response.data
+    
+    # Query database using scalar execution to confirm record persistence
+    updated_user = db.session.execute(
+        db.select(User).filter_by(email='updated@email.com')
+        ).scalar_one()
+    assert updated_user.image_file != 'default.jpg'
+    assert updated_user.image_file.endswith('.jpg')
