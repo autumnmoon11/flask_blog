@@ -38,11 +38,11 @@ class SearchableMixin(object):
     def after_commit(cls, session):
         # Sync database changes to Elasticsearch index
         for obj in session._changes['add']:
-            add_to_index(cls.__tablename__, obj)
+            add_to_index(obj.__tablename__, obj)
         for obj in session._changes['update']:
-            add_to_index(cls.__tablename__, obj)
+            add_to_index(obj.__tablename__, obj)
         for obj in session._changes['delete']:
-            remove_from_index(cls.__tablename__, obj)
+            remove_from_index(obj.__tablename__, obj)
         session._changes = None
 
 

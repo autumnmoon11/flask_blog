@@ -70,3 +70,23 @@ def cleanup_test_images(app):
     # Wiping the entire test folder after the test finishes
     if os.path.exists(full_test_path):
         shutil.rmtree(full_test_path)
+
+@pytest.fixture
+def cleanup_search(app):
+    """Ensure the Elasticsearch index is clean before and after tests."""
+    # This runs before the test
+    with app.app_context():
+        if app.elasticsearch:
+            # Delete the index if it exists to start fresh
+            if app.elasticsearch.indices.exists(index='post'):
+                app.elasticsearch.indices.delete(index='post')
+            # Re-create it (later we will add stemming/mappings here)
+            app.elasticsearch.indices.create(index='post')
+            
+    yield
+    
+    # This runs after the test
+    with app.app_context():
+        if app.elasticsearch:
+            if app.elasticsearch.indices.exists(index='post'):
+                app.elasticsearch.indices.delete(index='post')
