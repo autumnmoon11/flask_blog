@@ -3,10 +3,48 @@ from flask import current_app
 from flaskblog import db, login_manager
 from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
+from flaskblog.search import add_to_index, remove_from_index
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+class SearchableMixin(object):
+    @classmethod
+    def search(cls, expression, page, per_page):
+        # Query the specific index for this model
+        if not current_app.elasticsearch:
+            return [], 0
+        search = current_app.elasticsearch.search(
+            index=cls.__tablename__,
+            query={'multi_match': {'query': expression, 'fields': ['*']}},
+            from_=(page - 1) * per_page,
+            size=per_page
+        )
+        ids = [int(hit['_id']) for hit in search['hits']['hits']]
+        return ids, search['hits']['total']['value']
+
+    @classmethod
+    def before_commit(cls, session):
+        # Store pending changes in the session for use after commit
+        session._changes = {
+            'add': [obj for obj in session.new if isinstance(obj, cls)],
+            'update': [obj for obj in session.dirty if isinstance(obj, cls)],
+            'delete': [obj for obj in session.deleted if isinstance(obj, cls)]
+        }
+
+    @classmethod
+    def after_commit(cls, session):
+        # Sync database changes to Elasticsearch index
+        for obj in session._changes['add']:
+            add_to_index(cls.__tablename__, obj)
+        for obj in session._changes['update']:
+            add_to_index(cls.__tablename__, obj)
+        for obj in session._changes['delete']:
+            remove_from_index(cls.__tablename__, obj)
+        session._changes = None
+
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,11 +70,12 @@ class User(db.Model, UserMixin):
         try:
             payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
             return db.session.get(User, payload['user_id'])
-        except Exception:
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return None
 
 
-class Post(db.Model):
+class Post(SearchableMixin, db.Model):
+    __searchable__ = ['title', 'content'] # Define fields for Elasticsearch
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     date_posted = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -46,3 +85,8 @@ class Post(db.Model):
 
     def __repr__(self):
         return f"Post('{self.title}', '{self.date_posted}')"
+    
+
+# Register the listeners to the SQLAlchemy session
+db.event.listen(db.session, 'before_commit', SearchableMixin.before_commit)
+db.event.listen(db.session, 'after_commit', SearchableMixin.after_commit)
