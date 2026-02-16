@@ -44,15 +44,23 @@ def create_app(config_class=Config):
         from flaskblog.models import Post
         from flaskblog.search import add_to_index
         
-        # Optionally delete the index first to start fresh
-        # app.elasticsearch.indices.delete(index='post', ignore=[400, 404])
-        
-        count = 0
-        for post in Post.query.all():
+        """Regenerate the search index with English stemming."""
+        if not app.elasticsearch:
+            return
+    
+        # Wipe the old 'dumb' index
+        if app.elasticsearch.indices.exists(index='post'):
+            app.elasticsearch.indices.delete(index='post')
+    
+        # Create the new 'smart' index
+        Post.create_index()
+    
+        # Bulk sync
+        posts = Post.query.all()
+        for post in posts:
             add_to_index('post', post)
-            count += 1
         
-        click.echo(f"Successfully indexed {count} posts to Elasticsearch.")
+        print(f'Successfully reindexed {len(posts)} posts with English Stemming.')
 
     # Import and Register Blueprints inside the function
     from flaskblog.users.routes import users

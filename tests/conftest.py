@@ -80,13 +80,13 @@ def cleanup_search(app):
             # Delete the index if it exists to start fresh
             if app.elasticsearch.indices.exists(index='post'):
                 app.elasticsearch.indices.delete(index='post')
-            # Re-create it (later we will add stemming/mappings here)
-            app.elasticsearch.indices.create(index='post')
+            # Re-create it
+            from flaskblog.models import Post
+            Post.create_index()
             
     yield
     
     # This runs after the test
     with app.app_context():
-        if app.elasticsearch:
-            if app.elasticsearch.indices.exists(index='post'):
-                app.elasticsearch.indices.delete(index='post')
+        if app.elasticsearch and app.elasticsearch.indices.exists(index='post'):
+            app.elasticsearch.indices.delete(index='post')

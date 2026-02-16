@@ -15,15 +15,44 @@ class SearchableMixin(object):
     def search(cls, expression, page, per_page):
         # Query the specific index for this model
         if not current_app.elasticsearch:
-            return [], 0
+            return [], 0, []
         search = current_app.elasticsearch.search(
             index=cls.__tablename__,
-            query={'multi_match': {'query': expression, 'fields': ['*']}},
+            query={'multi_match': {'query': expression, 'fields': ['*'], 'fuzziness': 'AUTO'}},
+            highlight={'fields': {'title': {},'content': {}}},
             from_=(page - 1) * per_page,
             size=per_page
         )
         ids = [int(hit['_id']) for hit in search['hits']['hits']]
-        return ids, search['hits']['total']['value']
+        total = search['hits']['total']['value']
+        hits = search['hits']['hits']
+
+        return ids, total, hits
+    
+    @classmethod
+    def create_index(cls):
+        index = cls.__tablename__
+        # Define the specialized settings for English stemming
+        settings = {
+            "settings": {
+                "analysis": {
+                    "analyzer": {
+                        "default": {
+                            "type": "english"
+                        }
+                    }
+                }
+            },
+            "mappings": {
+                "properties": {
+                    "title": {"type": "text", "analyzer": "english"},
+                    "content": {"type": "text", "analyzer": "english"}
+                }
+            }
+        }
+        
+        if not current_app.elasticsearch.indices.exists(index=index):
+            current_app.elasticsearch.indices.create(index=index, body=settings)
 
     @classmethod
     def before_commit(cls, session):

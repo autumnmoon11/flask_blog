@@ -13,8 +13,22 @@
               <small class="text-muted">{{ post.category }}</small>
               <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
             </div>
-            <h2><a class="article-title" href="{{ url_for('posts.post', post_id=post.id)}}">{{ post.title }}</a></h2>
-            <p class="article-content">{{ post.content }}</p>
+            <h2>
+                <a class="article-title" href="{{ url_for('posts.post', post_id=post.id)}}">
+                    {% if post.highlights and post.highlights.title %}
+                        {{ post.highlights.title[0] | safe }}
+                    {% else %}
+                        {{ post.title }}
+                    {% endif %}
+                </a>
+            </h2>
+            <p class="article-content">
+                {% if post.highlights and post.highlights.content %}
+                    {{ post.highlights.content[0] | safe }}
+                {% else %}
+                    {{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}
+                {% endif %}
+            </p>
           </div>
         </article>
         {% endfor %}

@@ -27,7 +27,7 @@ def search():
         return render_template('search.html', title='Search', posts=[], total=0)
 
     # Execute search via the Mixin
-    ids, total = Post.search(q, page, per_page)
+    ids, total, hits = Post.search(q, page, per_page)
     
     # Query database for the full objects based on IDs returned by Elasticsearch
     if total > 0:
@@ -36,6 +36,16 @@ def search():
             db.select(Post).filter(Post.id.in_(ids))
         ).scalars().all()
         posts.sort(key=lambda x: ids.index(x.id))
+
+        # Match the highlight snippets from 'hits' to the 'posts' objects
+        for i, post in enumerate(posts):
+            # look for the hit that matches this post ID
+            # In most cases, it's hits[i], but searching by ID is safer
+            hit = next((h for h in hits if int(h['_id']) == post.id), None)
+            if hit and 'highlight' in hit:
+                post.highlights = hit['highlight']
+            else:
+                post.highlights = {}
     else:
         posts = []
 

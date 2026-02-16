@@ -78,3 +78,13 @@ body {
   .account-heading {
     font-size: 2.5rem;
   }
+
+  /* Styling for Elasticsearch search highlights */
+article em {
+  background-color: #fff3cd; /* Soft yellow highlight */
+  color: #856404;            /* Dark text for contrast */
+  font-style: normal;        /* Remove italics for a cleaner 'marker' look */
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 3px;
+}

@@ -33,4 +33,28 @@ def test_elasticsearch_integration(client, app, auth, test_user, cleanup_search)
     
     # Search for the unique word
     response = client.get('/search?q=Magic')
-    assert b'Docker Magic' in response.data
+    assert b'Docker <em>Magic</em>' in response.data
+
+def test_search_intelligence_and_highlights(client, app, auth, test_user, cleanup_search):
+    """Test that stemming (post/posted) and highlighting work together."""
+    auth.login()
+    
+    # Create a post with a specific word
+    client.post('/post/new', data={
+        'title': 'Building with Flask', 
+        'content': 'I am currently building a blog platform.', 
+        'category': 'Tech'
+    }, follow_redirects=True)
+    
+    # Give the SQLAlchemy event listener 1 full second to communicate with the Elasticsearch container
+    import time
+    time.sleep(1)
+
+    # Refresh the index to make it searchable
+    with app.app_context():
+        app.elasticsearch.indices.refresh(index='post')
+
+    # Test Stemming & Highlighing: Search for 'build' (root) to find 'building' (stored)
+    response = client.get('/search?q=build')
+    assert b'<em>building</em>' in response.data.lower()
+    assert b'flask' in response.data.lower()
