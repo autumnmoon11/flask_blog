@@ -1,6 +1,12 @@
 {% extends "layout.html" %}
 {% block content %}
-    <h1 class="mb-3">Results for "{{ q }}" ({{ total }})</h1>
+    <h2 class="mb-3 font-weight-light">Search Results</h2>
+    
+    <div class="search-meta mb-4 pb-2 border-bottom text-muted">
+        <span class="badge badge-info mr-2">{{ total }}</span> 
+        matches found for <span class="font-italic text-dark">"{{ q }}"</span>
+    </div>
+
     {% if posts %}
         {% for post in posts %}
         <article class="media content-section">
@@ -9,8 +15,12 @@
                alt="{{ post.author.username }}">
           <div class="media-body">
             <div class="article-metadata">
-              <a class="mr-2" href="{{ url_for('users.user_posts', username=post.author.username) }}">{{ post.author.username }}</a>
-              <small class="text-muted">{{ post.category }}</small>
+                <div>
+                    <a class="mr-2" href="{{ url_for('users.user_posts', username=post.author.username) }}">{{ post.author.username }}</a>
+                    <span class="badge badge-light border text-muted ml-2" style="font-weight: 500;">
+                        {{ post.category }}
+                    </span>
+                </div>
               <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
             </div>
             <h2>

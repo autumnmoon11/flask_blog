@@ -16,6 +16,9 @@ class SearchableMixin(object):
         # Query the specific index for this model
         if not current_app.elasticsearch:
             return [], 0, []
+        if not current_app.elasticsearch.indices.exists(index=cls.__tablename__):
+            cls.create_index()  # Proactively fix the missing index
+            return [], 0, []
         search = current_app.elasticsearch.search(
             index=cls.__tablename__,
             query={'multi_match': {'query': expression, 'fields': ['*'], 'fuzziness': 'AUTO'}},

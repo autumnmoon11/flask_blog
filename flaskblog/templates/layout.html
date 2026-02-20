@@ -15,8 +15,8 @@
     {% endif %}
 </head>
 <body>
-    <header class="site-header">
-        <nav class="navbar navbar-expand-md navbar-dark bg-steel fixed-top">
+    <header class="site-header sticky-top">
+        <nav class="navbar navbar-expand-md navbar-dark bg-steel">
             <div class="container">
                 <a class="navbar-brand mr-4" href="/">Flask Blog</a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggle" aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,7 +40,7 @@
                     </div>
                     <form class="form-inline ml-auto" method="GET" action="{{ url_for('main.search') }}">
                         <div class="input-group input-group-sm">
-                            <input class="form-control" type="search" name="q" placeholder="Search..." aria-label="Search" value="{{ q or '' }}">
+                            <input class="form-control" type="search" name="q" placeholder="Search posts..." aria-label="Search" value="{{ q or '' }}">
                             <div class="input-group-append">
                                 <button class="btn btn-outline-info" type="submit">Search</button>
                             </div>
@@ -65,7 +65,7 @@
                 {% block content %}{% endblock %}
             </div>
             <div class="col-md-4">
-                <div class="content-section">
+                <div class="content-section sticky-top" style="top: 5.5rem;">
                     <h3>Our Sidebar</h3>
                     <p class='text-muted'>You can put any information here you'd like.</p>
                     <ul class="list-group">
