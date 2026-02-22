@@ -8,6 +8,8 @@ from flaskblog.config import Config
 from elasticsearch import Elasticsearch
 import click
 from flask.cli import with_appcontext
+from redis import Redis
+from tasktiger import TaskTiger
 
 # 1. Initialize extensions without the 'app' yet
 db = SQLAlchemy()
@@ -17,6 +19,12 @@ login_manager.login_view = 'users.login'
 login_manager.login_message_category = 'info'
 mail = Mail()
 migrate = Migrate()
+tiger = TaskTiger()
+
+
+# Initialize Redis connection globally with the Docker hostname
+redis_conn = Redis(host='redis', port=6379)
+tiger = TaskTiger(connection=redis_conn)
 
 
 def create_app(config_class=Config):

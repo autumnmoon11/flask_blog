@@ -9,4 +9,5 @@ class Config:
     MAIL_USERNAME = os.environ.get('EMAIL_USER')
     MAIL_PASSWORD = os.environ.get('EMAIL_PASS')
     UPLOADED_PHOTOS_DEST = 'static/profile_pics'
-    ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL') or 'http://localhost:9200'
+    ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL') or 'http://elasticsearch:9200'
+    REDIS_HOST = 'redis'

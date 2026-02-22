@@ -4,6 +4,7 @@ from flaskblog import db, login_manager
 from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
 from flaskblog.search import add_to_index, remove_from_index
+from flaskblog import tiger
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -33,6 +34,14 @@ class SearchableMixin(object):
         return ids, total, hits
     
     @classmethod
+    def add_to_index(cls, model):
+        add_to_index(cls.__tablename__, model)
+
+    @classmethod
+    def remove_from_index(cls, model):
+        remove_from_index(cls.__tablename__, model)
+
+    @classmethod
     def create_index(cls):
         index = cls.__tablename__
         # Define the specialized settings for English stemming
@@ -56,26 +65,6 @@ class SearchableMixin(object):
         
         if not current_app.elasticsearch.indices.exists(index=index):
             current_app.elasticsearch.indices.create(index=index, body=settings)
-
-    @classmethod
-    def before_commit(cls, session):
-        # Store pending changes in the session for use after commit
-        session._changes = {
-            'add': [obj for obj in session.new if isinstance(obj, cls)],
-            'update': [obj for obj in session.dirty if isinstance(obj, cls)],
-            'delete': [obj for obj in session.deleted if isinstance(obj, cls)]
-        }
-
-    @classmethod
-    def after_commit(cls, session):
-        # Sync database changes to Elasticsearch index
-        for obj in session._changes['add']:
-            add_to_index(obj.__tablename__, obj)
-        for obj in session._changes['update']:
-            add_to_index(obj.__tablename__, obj)
-        for obj in session._changes['delete']:
-            remove_from_index(obj.__tablename__, obj)
-        session._changes = None
 
 
 class User(db.Model, UserMixin):
@@ -106,6 +95,15 @@ class User(db.Model, UserMixin):
             return None
 
 
+def update_index_task(model_id):
+    from flaskblog import create_app
+    app = create_app()
+    with app.app_context():
+        from flaskblog.models import Post
+        post = Post.query.get(model_id)
+        if post:
+            Post.add_to_index(post)
+
 class Post(SearchableMixin, db.Model):
     __searchable__ = ['title', 'content'] # Define fields for Elasticsearch
     id = db.Column(db.Integer, primary_key=True)
@@ -118,7 +116,22 @@ class Post(SearchableMixin, db.Model):
     def __repr__(self):
         return f"Post('{self.title}', '{self.date_posted}')"
     
+    @staticmethod
+    def after_insert(mapper, connection, target):
+        # Instead of calling add_to_index directly:
+        tiger.delay(update_index_task, args=(target.id,))
+
+    @staticmethod
+    def after_update(mapper, connection, target):
+        tiger.delay(update_index_task, args=(target.id,))
+
+    @staticmethod
+    def after_delete(mapper, connection, target):
+        # For deletes, we can still use background tasks
+        tiger.delay(Post.remove_from_index, args=(target,))
+    
 
 # Register the listeners to the SQLAlchemy session
-db.event.listen(db.session, 'before_commit', SearchableMixin.before_commit)
-db.event.listen(db.session, 'after_commit', SearchableMixin.after_commit)
+db.event.listen(Post, 'after_insert', Post.after_insert)
+db.event.listen(Post, 'after_update', Post.after_update)
+db.event.listen(Post, 'after_delete', Post.after_delete)

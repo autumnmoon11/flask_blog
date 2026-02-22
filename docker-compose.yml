@@ -37,5 +37,24 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  worker:
+    build: .
+    command: tasktiger -h redis
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=sqlite:///site.db
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_HOST=redis
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+      - elasticsearch
+
 volumes:
   es_data:  # Defines the named volume for search persistence
