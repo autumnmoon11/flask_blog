@@ -90,3 +90,12 @@ def cleanup_search(app):
     with app.app_context():
         if app.elasticsearch and app.elasticsearch.indices.exists(index='post'):
             app.elasticsearch.indices.delete(index='post')
+
+
+@pytest.fixture(autouse=True)
+def eager_tasks(app):
+    # This forces TaskTiger to run tasks immediately in the same process instead of sending them to Redis
+    from flaskblog import tiger
+    tiger.config['ALWAYS_EAGER'] = True
+    yield
+    tiger.config['ALWAYS_EAGER'] = False

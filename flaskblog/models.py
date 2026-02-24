@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
 from flaskblog.search import add_to_index, remove_from_index
 from flaskblog import tiger
+from flaskblog.tasks import update_index_task, remove_index_task
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -95,15 +96,6 @@ class User(db.Model, UserMixin):
             return None
 
 
-def update_index_task(model_id):
-    from flaskblog import create_app
-    app = create_app()
-    with app.app_context():
-        from flaskblog.models import Post
-        post = Post.query.get(model_id)
-        if post:
-            Post.add_to_index(post)
-
 class Post(SearchableMixin, db.Model):
     __searchable__ = ['title', 'content'] # Define fields for Elasticsearch
     id = db.Column(db.Integer, primary_key=True)
@@ -127,8 +119,8 @@ class Post(SearchableMixin, db.Model):
 
     @staticmethod
     def after_delete(mapper, connection, target):
-        # For deletes, we can still use background tasks
-        tiger.delay(Post.remove_from_index, args=(target,))
+        from flaskblog.tasks import remove_index_task
+        tiger.delay(remove_index_task, args=(target.id,))
     
 
 # Register the listeners to the SQLAlchemy session

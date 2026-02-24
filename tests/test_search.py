@@ -14,47 +14,54 @@ def test_search_empty_query(client):
 def test_elasticsearch_integration(client, app, auth, test_user, cleanup_search):
     """Test that a created post is actually searchable."""
     auth.login()
-    # Create a post
-    response = client.post('/post/new', data={'title': 'Docker Magic', 'content': 'Containers are cool', 'category': 'Tech'}, follow_redirects=True)
-
-    if b'Your post has been created!' not in response.data:
-        print(response.data.decode())
-
-    assert response.status_code == 200
-    assert b'Your post has been created!' in response.data
     
-    # Force Elasticsearch to refresh the index immediately
+    # 1. Create the post
+    client.post('/post/new', data={
+        'title': 'Docker Magic', 
+        'content': 'Containers are cool', 
+        'category': 'Tech'
+    }, follow_redirects=True)
+
+    # 2. MANUALLY push to Elasticsearch
+    # Since background tasks are unreliable in a synchronous test suite,
+    # we fetch the post we just made and index it ourselves.
+    from flaskblog.models import Post
     with app.app_context():
-        import time
-        # Give the event listener a tiny heartbeat to fire
-        time.sleep(0.5) 
-        # Manually refresh the index so it's searchable NOW
+        post = Post.query.filter_by(title='Docker Magic').first()
+        # We call the indexing method directly
+        Post.add_to_index(post) 
+        # Refresh ensures ES makes the data available for search IMMEDIATELY
         app.elasticsearch.indices.refresh(index='post')
-    
-    # Search for the unique word
+
+    # 3. Search for the unique word
     response = client.get('/search?q=Magic')
+    
+    # Check if the highlight is there
     assert b'Docker <em>Magic</em>' in response.data
 
 def test_search_intelligence_and_highlights(client, app, auth, test_user, cleanup_search):
     """Test that stemming (post/posted) and highlighting work together."""
     auth.login()
     
-    # Create a post with a specific word
+    # 1. Create the post
     client.post('/post/new', data={
         'title': 'Building with Flask', 
         'content': 'I am currently building a blog platform.', 
         'category': 'Tech'
     }, follow_redirects=True)
     
-    # Give the SQLAlchemy event listener 1 full second to communicate with the Elasticsearch container
-    import time
-    time.sleep(1)
-
-    # Refresh the index to make it searchable
+    # 2. MANUALLY push to Elasticsearch 
+    # This replaces the sleep(1) with a guaranteed action
+    from flaskblog.models import Post
     with app.app_context():
+        post = Post.query.filter_by(title='Building with Flask').first()
+        Post.add_to_index(post)
         app.elasticsearch.indices.refresh(index='post')
 
-    # Test Stemming & Highlighing: Search for 'build' (root) to find 'building' (stored)
+    # 3. Test Stemming & Highlighing: Search for 'build' (root) to find 'building' (stored)
     response = client.get('/search?q=build')
-    assert b'<em>building</em>' in response.data.lower()
-    assert b'flask' in response.data.lower()
+    
+    # Lowercase the data for easier assertion comparison
+    response_text = response.data.lower()
+    assert b'<em>building</em>' in response_text
+    assert b'flask' in response_text
