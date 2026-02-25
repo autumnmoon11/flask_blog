@@ -1,10 +1,11 @@
 from flask import render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_user, current_user, logout_user, login_required
-from flaskblog import db, bcrypt
+from flaskblog import db, bcrypt, tiger
 from flaskblog.models import User, Post
 from flaskblog.users.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
                                    RequestResetForm, ResetPasswordForm)
 from flaskblog.users.utils import save_picture, send_reset_email
+from flaskblog.tasks import process_profile_pic_task
 
 
 users = Blueprint('users', __name__)
@@ -52,9 +53,11 @@ def account():
     form = UpdateAccountForm()
     if form.validate_on_submit():
         if form.picture.data:
-            # Passing current_user.image_file so the old one gets deleted
-            picture_file = save_picture(form.picture.data, old_picture=current_user.image_file)
-            current_user.image_file = picture_file
+            # Save the raw file quickly
+            picture_fn = save_picture(form.picture.data)
+            # Queue the processing task
+            tiger.delay(process_profile_pic_task, args=(current_user.id, picture_fn, current_user.image_file))
+            flash('Your profile picture is being processed and will appear in a few minutes', 'info')
         current_user.username = form.username.data
         current_user.email = form.email.data
         db.session.commit()

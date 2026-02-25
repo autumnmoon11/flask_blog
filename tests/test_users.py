@@ -95,5 +95,4 @@ def test_update_account_with_picture(app, client, auth, test_user, cleanup_test_
     updated_user = db.session.execute(
         db.select(User).filter_by(email='updated@email.com')
         ).scalar_one()
-    assert updated_user.image_file != 'default.jpg'
-    assert updated_user.image_file.endswith('.jpg')
+    assert b'Your profile picture is being processed and will appear in a few minutes' in response.data

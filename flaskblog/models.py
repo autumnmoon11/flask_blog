@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
 from flaskblog.search import add_to_index, remove_from_index
 from flaskblog import tiger
-from flaskblog.tasks import update_index_task, remove_index_task
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -110,11 +110,12 @@ class Post(SearchableMixin, db.Model):
     
     @staticmethod
     def after_insert(mapper, connection, target):
-        # Instead of calling add_to_index directly:
+        from flaskblog.tasks import update_index_task
         tiger.delay(update_index_task, args=(target.id,))
 
     @staticmethod
     def after_update(mapper, connection, target):
+        from flaskblog.tasks import update_index_task
         tiger.delay(update_index_task, args=(target.id,))
 
     @staticmethod

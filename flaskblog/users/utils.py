@@ -1,32 +1,24 @@
 import os
 import secrets
-from PIL import Image
 from flask import url_for, current_app
 from flaskblog.tasks import send_async_email
 from flaskblog import tiger
 
 
-def save_picture(form_picture, old_picture=None):
-    # Generate a random name to prevent filename collisions
+def save_picture(form_picture):
+    """Saves the raw uploaded image to a temporary processing folder."""
     random_hex = secrets.token_hex(8)
     _, f_ext = os.path.splitext(form_picture.filename)
     picture_fn = random_hex + f_ext
 
-    # Retrieve upload folder from config to ensure test/prod isolation
-    upload_folder = current_app.config.get('UPLOADED_PHOTOS_DEST', 'static/profile_pics')
-    picture_path = os.path.join(current_app.root_path, upload_folder, picture_fn)
-
-    # Resize and thumbnail image to 125x125 for storage efficiency
-    output_size = (125, 125)
-    i = Image.open(form_picture)
-    i.thumbnail(output_size)
-    i.save(picture_path)
-
-    # Delete existing profile picture from filesystem if not the default image
-    if old_picture and old_picture != 'default.jpg':
-        old_picture_path = os.path.join(current_app.root_path, 'static', 'profile_pics', old_picture)
-        if os.path.exists(old_picture_path):
-            os.remove(old_picture_path)
+    # Save to a 'processing' subdirectory so the main folder stays clean
+    upload_folder = os.path.join(current_app.root_path, 'static/profile_pics/processing')
+    
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+        
+    picture_path = os.path.join(upload_folder, picture_fn)
+    form_picture.save(picture_path)
 
     return picture_fn
 

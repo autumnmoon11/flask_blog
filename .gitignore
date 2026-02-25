@@ -8,3 +8,10 @@ site.db
 .flaskenv
 .pytest_cache/
 *.db
+
+# Ignore processed and temp images
+flaskblog/static/profile_pics/*
+!flaskblog/static/profile_pics/default.jpg
+!flaskblog/static/profile_pics/processing/
+flaskblog/static/profile_pics/processing/*
+!flaskblog/static/profile_pics/processing/.gitkeep
