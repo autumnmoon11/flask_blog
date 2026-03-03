@@ -1,10 +1,10 @@
 import pytest
 import io
 from PIL import Image
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from flaskblog import db, tiger
 from flaskblog.models import Post, User
-from flaskblog.tasks import process_profile_pic_task
+from flaskblog.tasks import process_profile_pic_task, summarize_post_task
 import os
 
 def test_new_post_queues_indexing_task(client, auth, app, test_user):
@@ -117,3 +117,32 @@ def test_image_processing_task_updates_db(app, test_user):
             
         # Check cleanup
         assert not os.path.exists(temp_path)
+
+def test_summarize_post_task(app, sample_post):
+    """
+    Test that the background task correctly updates the post summary
+    using a mocked OpenAI response.
+    """
+    with app.app_context():
+        # Setup the Mock Structure
+        mock_openai_instance = MagicMock()
+        mock_response = MagicMock()
+        
+        # Define what the AI 'returns'
+        mock_response.choices = [
+            MagicMock(message=MagicMock(content="Mocked Summary"))
+        ]
+        
+        mock_openai_instance.chat.completions.create.return_value = mock_response
+
+        # Patch the 'openai' module INSIDE flaskblog.tasks
+        with patch('flaskblog.tasks.openai.OpenAI', return_value=mock_openai_instance):
+            
+            # Run the task
+            summarize_post_task(sample_post.id)
+            
+            # Assert the DB was updated
+            from flaskblog.models import Post
+            from flaskblog import db
+            updated_post = db.session.get(Post, sample_post.id)
+            assert updated_post.summary == "Mocked Summary"

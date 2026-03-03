@@ -3,7 +3,7 @@ import pytest
 import shutil
 from flaskblog import create_app, db
 from flaskblog.config import Config
-from flaskblog.models import User
+from flaskblog.models import User, Post
 from flask_bcrypt import generate_password_hash
 
 class TestConfig(Config):
@@ -99,3 +99,16 @@ def eager_tasks(app):
     tiger.config['ALWAYS_EAGER'] = True
     yield
     tiger.config['ALWAYS_EAGER'] = False
+
+
+@pytest.fixture
+def sample_post(app):
+    with app.app_context():
+        db.create_all()
+        user = User(username='testuser', email='test@test.com', password='password')
+        post = Post(title='Test Title', content='This is long content to summarize.', author=user)
+        db.session.add(user)
+        db.session.add(post)
+        db.session.commit()
+        yield post
+        db.drop_all()

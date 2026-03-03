@@ -11,3 +11,4 @@ class Config:
     UPLOADED_PHOTOS_DEST = 'static/profile_pics'
     ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL') or 'http://elasticsearch:9200'
     REDIS_HOST = 'redis'
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')

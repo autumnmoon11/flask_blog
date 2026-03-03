@@ -15,7 +15,14 @@
           <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
         </div>
         <h2><a class="article-title" href="{{ url_for('posts.post', post_id=post.id)}}">{{ post.title }}</a></h2>
-        <p class="article-content">{{ post.content }}</p>
+        <div id="summary-section">
+          {% if post.summary %}
+              {% include 'partials/_summary_content.html' %}
+          {% elif post.summary is none %}
+              {% include 'partials/_summary_loading.html' %}
+          {% endif %}
+        </div>
+          <p class="article-content">{{ post.content|truncate(400) }}</p>
       </div>
     </article>
     {% endfor %}

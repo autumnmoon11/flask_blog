@@ -16,7 +16,11 @@ def new_post():
         post = Post(title=form.title.data, content=form.content.data, author=current_user, category=form.category.data)
         db.session.add(post)
         db.session.commit()
-        flash('Your post has been created!', 'success')
+
+        from flaskblog.tasks import summarize_post_task
+        summarize_post_task.delay(post.id)
+        
+        flash('Your post has been created! AI is summarizing your post...', 'success')
         return redirect(url_for('main.home'))
     return render_template('create_post.html', title='New Post', form=form, legend="New Post")
 
@@ -58,3 +62,27 @@ def delete_post(post_id):
     db.session.commit()
     flash('Your post has been deleted!', 'success')
     return redirect(url_for('main.home'))
+
+@posts.route("/post/<int:post_id>/status")
+def post_status(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.summary:
+        return render_template('partials/_summary_content.html', post=post)
+    
+    return render_template('partials/_summary_loading.html', post=post)
+
+@posts.route("/post/<int:post_id>/summarize", methods=['POST'])
+@login_required
+def trigger_summary(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    
+    # Reset summary to None to trigger the "Loading" state in the UI
+    post.summary = None
+    db.session.commit()
+    
+    from flaskblog.tasks import summarize_post_task
+    summarize_post_task.delay(post.id)
+    
+    return render_template('partials/_summary_loading.html', post=post)

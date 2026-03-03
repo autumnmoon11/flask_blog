@@ -33,6 +33,7 @@ services:
       - FLASK_DEBUG=1
       - FLASK_APP=run.py
       - FLASK_RUN_HOST=0.0.0.0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -55,6 +56,7 @@ services:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - REDIS_HOST=redis
       - PYTHONPATH=/app
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       - redis
       - elasticsearch

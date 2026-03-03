@@ -1,0 +1,7 @@
+<div class="alert alert-info shadow-sm" 
+     hx-get="{{ url_for('posts.post_status', post_id=post.id) }}" 
+     hx-trigger="load delay:2s" 
+     hx-swap="outerHTML">
+    <span class="spinner-border spinner-border-sm" role="status"></span>
+    ✨ AI is summarizing this post...
+</div>

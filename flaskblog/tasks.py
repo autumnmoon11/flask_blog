@@ -5,6 +5,7 @@ from flaskblog.models import Post
 from flaskblog.search import remove_from_index
 from PIL import Image
 from flask import current_app
+import openai
 
 
 @tiger.task(retry=True, unique=True)
@@ -68,3 +69,33 @@ def process_profile_pic_task(user_id, picture_fn, old_picture):
         except Exception as e:
             # Might want to log this in a real production app
             print(f"Error processing image: {e}")
+
+@tiger.task(retry=True)
+def summarize_post_task(post_id):
+    app = current_app._get_current_object() if current_app else create_app()
+    with app.app_context():
+        post = db.session.get(Post, post_id)
+        if not post:
+            return
+
+        # Initialize client
+        client = openai.OpenAI(api_key=app.config['OPENAI_API_KEY'])
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that summarizes blog posts."},
+                    {"role": "user", "content": f"Summarize this post in two sentences: {post.content}"}
+                ]
+            )
+        
+            summary = response.choices[0].message.content
+        
+            # Update the database
+            post.summary = summary
+            db.session.commit()
+
+        except Exception as e:
+            # Log the error
+            print(f"Error summarizing post {post_id}: {e}")

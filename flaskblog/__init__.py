@@ -70,6 +70,16 @@ def create_app(config_class=Config):
         
         print(f'Successfully reindexed {len(posts)} posts with English Stemming.')
 
+
+    @app.cli.command("init-ai-fields")
+    @with_appcontext
+    def init_ai_fields():
+        """Sets NULL summaries to empty strings for old posts."""
+        from flaskblog.models import Post
+        count = Post.query.filter(Post.summary == None).update({Post.summary: ''})
+        db.session.commit()
+        print(f"Updated {count} posts.")
+
     # Import and Register Blueprints inside the function
     from flaskblog.users.routes import users
     from flaskblog.posts.routes import posts
