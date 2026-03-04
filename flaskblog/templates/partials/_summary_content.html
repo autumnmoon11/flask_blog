@@ -1,4 +1,26 @@
-<div class="alert alert-secondary shadow-sm animate__animated animate__fadeIn">
-    <h5 class="alert-heading">✨ AI Summary</h5>
-    <p class="mb-0">{{ post.summary }}</p>
+<div id="summary-section-{{ post.id }}" class="mt-3">
+    {% if post.summary %}
+        <div class="alert alert-secondary shadow-sm animate__animated animate__fadeIn">
+            <h5 class="alert-heading">✨ AI Summary</h5>
+            <p class="mb-0">{{ post.summary }}</p>
+        </div>
+
+        {% if post.author == current_user %}
+          <button type="button" 
+                  class="btn btn-outline-info btn-sm mt-2"
+                  hx-post="{{ url_for('posts.trigger_summary', post_id=post.id) }}"
+                  hx-target="#summary-section-{{ post.id }}"
+                  hx-swap="innerHTML">
+            ✨ Regenerate AI Summary
+          </button>
+        {% endif %}
+    {% elif post.author == current_user %}
+        <button type="button" 
+                class="btn btn-outline-info btn-sm"
+                hx-post="{{ url_for('posts.trigger_summary', post_id=post.id) }}"
+                hx-target="#summary-section-{{ post.id }}"
+                hx-swap="innerHTML">
+            ✨ Generate AI Summary
+        </button>
+    {% endif %}
 </div>
